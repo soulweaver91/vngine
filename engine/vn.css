@@ -1,0 +1,32 @@
+/* common */
+body { font-family: "Trebuchet MS", sans-serif; }
+#container, button { font-family: sans-serif; }
+#container { border: 3px solid black; padding: 0; margin-left: auto; margin-right: auto; position: relative; overflow: hidden; background-color: white; }
+.character, .background { height: 0px; overflow: visible; position: absolute; top: 0; left: 0; }
+#container, .character img, .background img { width: 800px; height: 600px; }
+#container.busy { cursor: wait; }
+#messagename_container { width: 30%; height: 56px; position: absolute; bottom: 146px; }
+#messagebox_container { width: 100%; height: 152px; position: absolute; bottom: 0px; }
+#messagename, #messagebox { margin: 5px; padding: 6px; padding-left: 20px; padding-right: 20px;
+                            font-size: 16pt; background-color: white; border: 2px solid black; color: black; }
+#messagebox { height: 125px; position: relative; overflow: auto; }
+#messagename { height: 30px; line-height: 30px; text-align: center; }
+#messagenext { position: absolute; bottom: 15px; right: 15px; overflow: hidden;
+               background-color: transparent; padding: 0; }
+#credits { position: absolute; top: 650px; display: table; font-family: Garamond, serif; }
+#credits dl { display: table-row; }
+#credits dl dt { text-align: right; display: table-cell; font-weight: bold; width: 50%; }
+#credits dl dd { text-align: left; display: table-cell; width: 50%; }
+#footer { text-align: center; font-size: 70%; }
+#messages div { width: 800px; margin-left: auto; margin-right: auto; border: 1px solid rgba(0,0,0,0.5); border-top: 0px none transparent; font-size: 80%; padding: 0 2px; }
+.footerbox { display: none; border: 1px solid rgba(0,0,0,0.5); border-radius: 8px; padding: 6px; width: 800px; margin-left: auto; margin-right: auto; }
+#saveform textarea, #loadform textarea { width: 100%; height: 10em; display: block; resize: vertical; }
+
+.background { z-index: 1; } .background.recent { z-index: 2; }
+.character { z-index: 5; } .character.recent { z-index: 6; }
+.overlay { z-index: 10; position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+.overlay.recent { z-index: 11; }
+#messagename_container, #messagebox_container { z-index: 1000; }
+
+.choice { border: 0px none transparent; background-color: transparent; display: block; font-size: 16pt; line-height: 1.35em; text-align: left; width: 100%; }
+.choice:hover { background-color: rgba(255,255,255,0.4); }

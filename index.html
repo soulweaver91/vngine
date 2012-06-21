@@ -1,0 +1,43 @@
+<!DOCTYPE html public>
+<html>
+    <head>
+        <title>VNgine</title>
+        <link rel="stylesheet" type="text/css" href="engine/vn.css">
+        <script type="text/javascript" language="JavaScript" src="engine/jquery-1.7.2.min.js"></script>
+        <script type="text/javascript" language="JavaScript" src="engine/jquery.base64.min.js"></script>
+        <script type="text/javascript" language="JavaScript" src="engine/vngine.js"></script>
+    </head>
+    <body>
+        <div id="container">
+            <div id="messagename_container">
+                <div id="messagename"></div>
+            </div>
+            <div id="messagebox_container">
+                <div id="messagebox">
+                    <div id="messagetext"><noscript>You need to enable JavaScript to use VNgine.</noscript></div>
+                </div>
+            </div>
+        </div>
+        <div id="messages">
+        </div>
+        <div id="footer">
+            <a href="javascript:showHelp();">Quick help</a>
+            <a href="javascript:showSave();">Save</a>
+            <a href="javascript:showLoad();">Load</a>
+            <a href="javascript:loadAutoSave();">Return to last choice</a>
+            <div id="help" class="footerbox">
+                <p>You can advance the dialog by clicking on anywhere outside the text box or by clicking on the spinning arrow indicator. Clicking when the message is being written will write the rest of it immediately into the text box.</p>
+                <p>The Enter key works similarly to a mouse click. By holding down the Ctrl key, you can skip through multiple lines of text.</p>
+                <p>You can hide the text box with the space key, to see the full background art behind it. By pressing Page Up and Page Down, you can browse the message history; you can get back to the current state by clicking on the image again.</p>
+            </div>
+            <div id="saveform" class="footerbox">
+                <textarea id="savedata" placeholder="Click the button to generate the save token"></textarea>
+                <button onclick="saveCurrentState(true);">Generate save token</button>
+            </div>
+            <div id="loadform" class="footerbox">
+                <textarea id="loaddata" placeholder="Paste the save token here"></textarea>
+                <button onclick="loadSavedState(true);">Load game from save token</button>
+            </div>
+        </div>
+    </body>
+</html>
