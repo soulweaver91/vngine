@@ -36,7 +36,7 @@ function VNgineError(msg,param,fatal) {
     } else {
         var c = confirm('VNgine error: ' + msg + ' (parameter string "' + param + '")\n\nContinue anyway? (Continuing after an error might yield unexpected results.)');
         VNgineLog("VNgine error: " + msg + ", parameters " + param);
-        if (c==true) { initStep(); }
+        if (c===true) { initStep(); }
     }
 }
 function VNgineLog(msg) {
@@ -66,8 +66,8 @@ String.prototype.toMurmurHash = function() {
         * @param {number} seed Positive integer only
         * @return {number} 32-bit positive integer hash
         */
-    str = this;
-    seed = 27038;
+    var str = this;
+    var seed = 27038;
     var l = str.length,
     h = seed ^ l,
     i = 0,
@@ -291,6 +291,78 @@ function initStep(timeout) {
     }
 }
 
+function evaluateExpression(expr) {
+    if (typeof expr === 'undefined') {
+        VNgineError("No expression was sent to evaluateExpression for handling.","N/A",false);
+    } else {
+        VNgineLog("ExprEval: new loop using the expression " + expr);
+        while ((expr.indexOf("(") >= 0) && (expr.indexOf(")") >= 0)) {
+            var start = expr.indexOf("(");
+            var end = start + 1;
+            var depth = 1;
+            while ((depth > 0) && (end < expr.length)) {
+                if (expr[end] == "(") { depth++; VNgineLog("ExprEval: went up a depth level at pos " + end + ": " + depth); }
+                if (expr[end] == ")") { depth--; VNgineLog("ExprEval: went down a depth level at pos " + end + ": " + depth); }
+                end++;
+            }
+            var str = evaluateExpression(expr.slice(start+1,end-1));
+            expr = expr.slice(0,start) + str + expr.slice(end);
+        }
+        while ((expr.indexOf("/") >= 0) || (expr.indexOf("*") >= 0)) {
+            var match = expr.match(/\b(-?[\d\w]+?)\s*?([\/\*])\s*?(-?[\d\w]+?)\b/);
+            if (match === null) {
+                VNgineError("Impossible RegExp state (no matches!)",expr,false);
+            }
+            VNgineLog("ExprEval: starting loops to determine operands in " + expr);
+            operand1 = evaluateExpression(match[1]);
+            operand2 = evaluateExpression(match[3]);
+            if (match[2] == "*") {
+                result = operand1 * operand2;
+            } else {
+                result = Math.floor(operand1 / operand2,0);
+            }
+            expra = expr;
+            expr = expr.replace(match[0],result);
+            //alert("Before: " + expra + "\nAfter: " + expr + "\nSearched for \"" + match[0] + "\"\nTried to replace it with " + result);
+        }
+        while ((expr.indexOf("+") > 0) || (expr.indexOf("-") > 0)) {
+            var match = expr.match(/\b(-?[\d\w]+?)\s*?([\+\-])\s*?(-?[\d\w]+?)\b/);
+            if (match === null) {
+                VNgineError("Impossible RegExp state (no matches!)",expr,false);
+            }
+            VNgineLog("ExprEval: starting loops to determine operands in " + expr);
+            operand1 = evaluateExpression(match[1]);
+            operand2 = evaluateExpression(match[3]);
+            if (match[2] == "+") {
+                result = operand1 + operand2;
+            } else {
+                result = operand1 - operand2;
+            }
+            expra = expr;
+            expr = expr.replace(match[0],result);
+            //alert("Before: " + expra + "\nAfter: " + expr + "\nSearched for \"" + match[0] + "\"\nTried to replace it with " + result);
+            //return 0;
+        }
+        if (isNaN(expr)) {
+            if (expr === undefined) {
+                VNgineError("ExprEval: parser error (invalid input)","N/A",false);
+                return 0;
+            } else {
+                if (expr[0] == "@") {
+                    VNgineLog("ExprEval: sent down global variable value " + localStorage[expr] + ".");
+                    return localStorage[expr];
+                } else {
+                    VNgineLog("ExprEval: sent down local variable value " + Variables[expr] + ".");
+                    return Variables[expr];
+                }
+            }
+        } else {
+            VNgineLog("ExprEval: sent down value " + expr + ".");
+            return Math.floor(parseInt(expr),0);
+        }
+    }
+}
+
 function nextline() {
     $('#messagenext').remove();
     $('#container').removeClass("clickable");
@@ -304,6 +376,7 @@ function nextline() {
             $('#messagebox').html("<span></span>");
             TextSpeed = 30;
             CtrlSkipped = false;
+            next[1] = next[1].replace(/\$@(.+?\b)/g,function(str, p1, offset, s){ return localStorage[p1]; });
             next[1] = next[1].replace(/\$(.+?\b)/g,function(str, p1, offset, s){ return Variables[p1]; });
             var StateMsg = next[1];
             if (next[1].charAt(0) == "[") {
@@ -342,7 +415,7 @@ function nextline() {
             VNgineLog("setbg: Created an image element for background file " + next[1]);
             break;
         case 'choice':
-            var params = next[1].split(";");
+            params = next[1].split(";");
             var len = params.length;
             $('#messagebox').html("").show();
             $('#messagename').html("").hide();
@@ -391,12 +464,19 @@ function nextline() {
                     initStep();
                 }
             } else {
+                Variables[params[0]] = null;
+                NovelRunState -= 1;
                 VNgineError('undefined variable name ' + params[0] + ' in ifvar event',next[1],false);
             }
             break;
         case 'setvar':
-            Variables[params[0]] = params.slice(1).join(" ");
+            Variables[params[0]] = evaluateExpression(params.slice(1).join(" "));
             VNgineLog("setvar: Set the value of the local variable " + params[0] + " to " + Variables[params[0]]);
+            initStep();
+            break;
+        case 'setglobal':
+            localStorage[params[0]] = evaluateExpression(params.slice(1).join(" "));
+            VNgineLog("setvar: Set the value of the global variable " + params[0] + " to " + Variables[params[0]]);
             initStep();
             break;
         case 'title':
