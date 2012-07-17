@@ -7,7 +7,6 @@
 var VNGINE_VERSION = "0.6";
 var VNGINE_EVENT_SET_VERSION = 1;
 
-var NovelID = "clannad";
 var NovelCurrentSceneFile = "";
 var NovelCurrentSceneHash = "";
 var NovelRunState = 0;
@@ -46,6 +45,12 @@ function VNgineLog(msg) {
 $(document).ready(function(){
     VNgineLog("VNgine version " + VNGINE_VERSION + " &copy;2012 Soulweaver");
     $('#footer').append('<div id="copyright">VNgine version ' + VNGINE_VERSION + ' &copy;2012 Soulweaver</div>');
+    var hash = window.location.hash;
+    if ((hash == "") || (hash === undefined)) {
+        NovelID = "default";
+    } else {
+        NovelID = hash.replace("#","");
+    }
     $('head').append('<link rel="stylesheet" type="text/css" href="vn/' + NovelID + '/default.css">');
     readScene("default.dat",false);
 });
@@ -486,6 +491,7 @@ function nextline() {
             break;
         case 'endif':
         case 'label':
+        case '':
             initStep();
             break;
         case 'load':

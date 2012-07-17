@@ -29,4 +29,4 @@ body { font-family: "Trebuchet MS", sans-serif; }
 #messagename_container, #messagebox_container { z-index: 1000; }
 
 .choice { border: 0px none transparent; background-color: transparent; display: block; font-size: 16pt; line-height: 1.35em; text-align: left; width: 100%; }
-.choice:hover { background-color: rgba(255,255,255,0.4); }
+.choice:hover { cursor: pointer; text-decoration: underline; }
