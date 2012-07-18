@@ -119,8 +119,10 @@ $(".background,.character,.overlay,#messagename_container").live("click", functi
                 $('#messagenext').remove();
                 initStep();
             } else {
-                if ($('#messagebox').hasClass("history")) {
-                    $('#messagebox').removeClass("history").html(NovelHistorySavedState);
+                if ($('#messagebox_container').hasClass("history")) {
+                    $('#messagebox_container').removeClass("history");
+                    $('#history_back, #history_forward').removeClass("disabled");
+                    $('#messagebox').html(NovelHistorySavedState);
                     $('#messagename_container').html(NovelHistorySavedStateName);
                 }
             }
@@ -143,40 +145,50 @@ $(document).keydown(function(event) {
             break;
         case 32:
             event.preventDefault();
-                if ($('#messagenext,.choice').length > 0) {
-                    $('#messagebox_container').toggle();
-                    $('#messagename_container').toggle();
-                    $('#container').toggleClass("clickable");
-                }
+            $("#hide_msgbox").click();
             break;
         case 33:
             event.preventDefault();
             // previous in history (PgUp)
-            if ($('#messagebox').hasClass('history')) {
-                NovelHistoryPoint = Math.min(MsgHistory.length-1,NovelHistoryPoint+1);
-                showHistoryItem(NovelHistoryPoint);
-            } else {
-                if ($('#messagenext').length > 0) {
-                    NovelHistoryPoint = 0;
-                    storeCurrentState();
-                    showHistoryItem(0);
-                }
-            }
+            $("#history_back").click();
             break;
         case 34:
             event.preventDefault();
             // next in history (PgDn)
-            if ($('#messagebox').hasClass('history')) {
-                NovelHistoryPoint = Math.max(0,NovelHistoryPoint-1);
-                showHistoryItem(NovelHistoryPoint);
-            } else {
-                if ($('#messagenext').length > 0) {
-                    NovelHistoryPoint = 0;
-                    storeCurrentState();
-                    showHistoryItem(0);
-                }
-            }
+            $("#history_forward").click();
             break;
+    }
+});
+
+$('#history_back').live("click", function() {
+    if ($('#messagebox_container').hasClass('history')) {
+        NovelHistoryPoint = Math.min(MsgHistory.length-1,NovelHistoryPoint+1);
+        showHistoryItem(NovelHistoryPoint);
+    } else {
+        if ($('#messagenext').length > 0) {
+            NovelHistoryPoint = 0;
+            storeCurrentState();
+            showHistoryItem(0);
+        }
+    }
+});
+$('#history_forward').live("click", function() {
+    if ($('#messagebox_container').hasClass('history')) {
+        NovelHistoryPoint = Math.max(0,NovelHistoryPoint-1);
+        showHistoryItem(NovelHistoryPoint);
+    } else {
+        if ($('#messagenext').length > 0) {
+            NovelHistoryPoint = 0;
+            storeCurrentState();
+            showHistoryItem(0);
+        }
+    }
+});
+$('#hide_msgbox').live("click", function() {
+    if ($('#messagenext,.choice').length > 0) {
+        $('#messagebox_container').toggle();
+        $('#messagename_container').toggle();
+        $('#container').toggleClass("clickable");
     }
 });
 
@@ -198,9 +210,13 @@ function addHistoryItem() {
     NameHistory.splice(0,0,$('#messagename_container').html());
 }
 function showHistoryItem(index) {
-    $('#messagebox').addClass('history').html(MsgHistory[index]);
+    $('#messagebox_container').addClass('history');
+    $('#messagebox').html(MsgHistory[index]);
     $('#messagename_container').html(NameHistory[index]);
     $('#messagename').addClass('history');
+    $('#history_back, #history_forward').removeClass("disabled");
+    if (index == 0) { $('#history_forward').addClass("disabled"); }
+    if (index + 1 == MsgHistory.length) { $('#history_back').addClass("disabled"); }
 }
 function storeCurrentState() {
     NovelHistorySavedState = $('#messagebox').html();
@@ -388,7 +404,7 @@ function nextline() {
                 var end = next[1].indexOf("]");
                 var side = next[1][end+1] == ">" ? "right" : "left";
                 var other = (side == "right") ? "left" : "right";
-                $('#messagename_container').css(side,"0px").css(other,"auto");
+                $('#messagename_container').removeClass("name_" + other).addClass("name_" + side);
                 $('#messagename').show().html(next[1].slice(1,end));
                 if (side == "right") { end++; }
                 StateMsg = next[1].slice(end+2);

@@ -11,7 +11,8 @@ body { font-family: "Trebuchet MS", sans-serif; }
                             font-size: 16pt; background-color: white; border: 2px solid black; color: black; }
 #messagebox { height: 125px; position: relative; overflow: auto; }
 #messagename { height: 30px; line-height: 30px; text-align: center; }
-#messagenext { position: absolute; bottom: 15px; right: 15px; overflow: hidden;
+#messagenext { position: absolute; bottom: 15px; right: 15px;  }
+#messagenext, #messagecontrols button { overflow: hidden;
                background-color: transparent; padding: 0; }
 #credits { position: absolute; top: 650px; display: table; font-family: Garamond, serif; }
 #credits dl { display: table-row; }
@@ -26,7 +27,14 @@ body { font-family: "Trebuchet MS", sans-serif; }
 .character { z-index: 5; } .character.recent { z-index: 6; }
 .overlay { z-index: 10; position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
 .overlay.recent { z-index: 11; }
-#messagename_container, #messagebox_container { z-index: 1000; }
+#messagename_container, #messagecontrols_container { z-index: 1001; }
+#messagebox_container { z-index: 1000; }
 
 .choice { border: 0px none transparent; background-color: transparent; display: block; font-size: 16pt; line-height: 1.35em; text-align: left; width: 100%; }
 .choice:hover { cursor: pointer; text-decoration: underline; }
+
+.msg_left { left: 0px; right: auto; }
+.msg_right { right: 0px; left: auto; }
+
+/* not implemented */
+#scroll_auto, #scroll_ff { display: none; }
