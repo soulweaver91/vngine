@@ -52,7 +52,7 @@ $(document).ready(function(){
         NovelID = hash.replace("#","");
     }
     $('head').append('<link rel="stylesheet" type="text/css" href="vn/' + NovelID + '/default.css">');
-    readScene("default.dat",false);
+    readScene("default.dat","start",false);
 });
 String.prototype.ltrim = function() {
     return this.replace(/^\s+/,"");
@@ -236,9 +236,9 @@ var IDs = {
     reInitialize: function(){ this.BGID = 0; this.CharID = 0; this.OverlayID = 0; this.MediaID = 0; }
 }
 
-function readScene(filename,loading) {
+function readScene(filename,label,loading) {
     loading = typeof loading !== 'undefined' ? loading : false;
-    NovelRunState = 0;
+    label = typeof label !== 'undefined' ? label : "start";
     $('#container').addClass("busy");
     $.get("vn/" + NovelID + "/scene/" + filename, function(data) {
         NovelCurrentSceneHash = data.toMurmurHash();
@@ -260,6 +260,7 @@ function readScene(filename,loading) {
             }
         });
         $('#container').removeClass("busy");
+        NovelRunState = NovelLabels[label];
         NovelCurrentSceneFile = filename;
         initStep();
         if (loading) { loadSavedStateFileRead(); }
@@ -511,7 +512,11 @@ function nextline() {
             initStep();
             break;
         case 'load':
-            readScene(next[1],false);
+            if (params[1] === undefined) {
+                readScene(params[0],"start",false);
+            } else {
+                readScene(params[0],params[1],false);
+            }
             break;
         case 'elif':
         case 'else':
@@ -803,7 +808,7 @@ function loadSavedState(manual,savedata) {
             $('.character, .background, .overlay, .preloader').remove();
             IDs.reInitialize();
             NovelCurrentSceneFile = savegame.NovelCurrentSceneFile;
-            readScene(NovelCurrentSceneFile,true);
+            readScene(NovelCurrentSceneFile,"start",true);
         } catch(err) {
             if (err == "SyntaxError: JSON.parse: unexpected end of data") {
                 err = "The entered save data could not be read.";
