@@ -330,8 +330,56 @@ function evaluateExpression(expr) {
             var str = evaluateExpression(expr.slice(start+1,end-1));
             expr = expr.slice(0,start) + str + expr.slice(end);
         }
+        if (expr.slice(0,2) == "--") {
+            expr = expr.slice(2);
+        }
+        while ((expr.indexOf("&&") >= 0) || (expr.indexOf("||") >= 0) || (expr.indexOf("^^") >= 0)) {
+            var match = expr.match(/(-?[@\w]+?(?:\.\d+?)?)\s*?([&\|\^]{2})\s*?(-?[@\w]+?(?:\.\d+?)?)\b/);
+            if (match === null) {
+                VNgineError("Impossible RegExp state (no matches!)",expr,false);
+            }
+            VNgineLog("ExprEval: starting loops to determine operands in " + expr);
+            operand1 = evaluateExpression(match[1]);
+            operand2 = evaluateExpression(match[3]);
+            switch (match[2]) {
+                case "&&": result = (operand1 == 1) && (operand2 == 1) ? 1 : 0; break;
+                case "||": result = (operand1 == 1) || (operand2 == 1) ? 1 : 0; break;
+                case "^^": result = (operand1 == 1 || operand2 == 1) && !(operand1 == 1 && operand2 == 1) ? 1 : 0; break;
+            }
+            expr = expr.replace(match[0],result);
+        }
+        while ((expr.indexOf("<") >= 0) || (expr.indexOf(">") >= 0) || (expr.indexOf("=") >= 0)) {
+            var match = expr.match(/(-?[@\w]+?(?:\.\d+?)?)\s*?([<>=])\s*?(-?[@\w]+?(?:\.\d+?)?)\b/);
+            if (match === null) {
+                VNgineError("Impossible RegExp state (no matches!)",expr,false);
+            }
+            VNgineLog("ExprEval: starting loops to determine operands in " + expr);
+            operand1 = evaluateExpression(match[1]);
+            operand2 = evaluateExpression(match[3]);
+            switch (match[2]) {
+                case "<": result = operand1 < operand2 ? 1 : 0; break;
+                case ">": result = operand1 > operand2 ? 1 : 0; break;
+                case "=": result = operand1 == operand2 ? 1 : 0; break;
+            }
+            expr = expr.replace(match[0],result);
+        }
+        while ((expr.indexOf("^") >= 0) || (expr.indexOf("~") >= 0)) {
+            var match = expr.match(/(-?[@\w]+?(?:\.\d+?)?)\s*?([\^~])\s*?(-?[@\w]+?(?:\.\d+?)?)\b/);
+            if (match === null) {
+                VNgineError("Impossible RegExp state (no matches!)",expr,false);
+            }
+            VNgineLog("ExprEval: starting loops to determine operands in " + expr);
+            operand1 = evaluateExpression(match[1]);
+            operand2 = evaluateExpression(match[3]);
+            if (match[2] == "^") {
+                result = Math.pow(operand1,operand2);
+            } else {
+                result = Math.pow(operand2,1/operand1);
+            }
+            expr = expr.replace(match[0],result);
+        }
         while ((expr.indexOf("/") >= 0) || (expr.indexOf("*") >= 0)) {
-            var match = expr.match(/\b(-?[\d\w]+?)\s*?([\/\*])\s*?(-?[\d\w]+?)\b/);
+            var match = expr.match(/(-?[@\w]+?(?:\.\d+?)?)\s*?([\/\*])\s*?(-?[@\w]+?(?:\.\d+?)?)\b/);
             if (match === null) {
                 VNgineError("Impossible RegExp state (no matches!)",expr,false);
             }
@@ -341,14 +389,12 @@ function evaluateExpression(expr) {
             if (match[2] == "*") {
                 result = operand1 * operand2;
             } else {
-                result = Math.floor(operand1 / operand2,0);
+                result = operand1 / operand2;
             }
-            expra = expr;
             expr = expr.replace(match[0],result);
-            //alert("Before: " + expra + "\nAfter: " + expr + "\nSearched for \"" + match[0] + "\"\nTried to replace it with " + result);
         }
-        while ((expr.indexOf("+") > 0) || (expr.indexOf("-") > 0)) {
-            var match = expr.match(/\b(-?[\d\w]+?)\s*?([\+\-])\s*?(-?[\d\w]+?)\b/);
+        while ((expr.indexOf("+") > 0) || (expr.slice(1).indexOf("-") >= 0)) {
+            var match = expr.match(/(-?[@\w]+?(?:\.\d+?)?)\s*?([\+\-])\s*?(-?[@\w]+?(?:\.\d+?)?)\b/);
             if (match === null) {
                 VNgineError("Impossible RegExp state (no matches!)",expr,false);
             }
@@ -360,10 +406,10 @@ function evaluateExpression(expr) {
             } else {
                 result = operand1 - operand2;
             }
-            expra = expr;
             expr = expr.replace(match[0],result);
-            //alert("Before: " + expra + "\nAfter: " + expr + "\nSearched for \"" + match[0] + "\"\nTried to replace it with " + result);
-            //return 0;
+            if (expr.slice(0,2) == "--") {
+                expr = expr.slice(2);
+            }
         }
         if (isNaN(expr)) {
             if (expr === undefined) {
@@ -373,14 +419,17 @@ function evaluateExpression(expr) {
                 if (expr[0] == "@") {
                     VNgineLog("ExprEval: sent down global variable value " + localStorage[expr] + ".");
                     return localStorage[expr];
+                } else if (expr[0] == "\"") {
+                    VNgineLog("ExprEval: sent down string " + expr + ".");
+                    return expr;
                 } else {
                     VNgineLog("ExprEval: sent down local variable value " + Variables[expr] + ".");
                     return Variables[expr];
                 }
             }
         } else {
-            VNgineLog("ExprEval: sent down value " + expr + ".");
-            return Math.floor(parseInt(expr),0);
+            VNgineLog("ExprEval: sent down value " + parseFloat(expr) + ".");
+            return parseFloat(expr);
         }
     }
 }
