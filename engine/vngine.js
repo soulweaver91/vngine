@@ -581,8 +581,8 @@ function nextline() {
             initStep();
             break;
         case 'ending':
-            $('#messagebox').html("").hide();
-            $('#messagename').html("").hide();
+            $('#messagebox').html("").parent().hide();
+            $('#messagename').html("").parent().hide();
             fadeColor("white",5000,true);
             stopMusic();
             var audio = $('audio.bgm#media_' + NovelAudio[next[1]])[0];
