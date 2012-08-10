@@ -586,9 +586,11 @@ function nextline() {
             fadeColor("white",5000,true);
             stopMusic();
             var audio = $('audio.bgm#media_' + NovelAudio[next[1]])[0];
-            audio.currentTime = 0;
-            audio.play();
-            audio.loop = false;
+            if (audio.duration > 0) {
+                audio.currentTime = 0;
+                audio.play();
+                audio.loop = false;
+            }
             $(audio).bind('ended', function(){
                 this.loop = true;
                 initStep();
@@ -609,8 +611,10 @@ function nextline() {
         case 'playmus':
             stopMusic();
             var audio = $('audio.bgm#media_' + NovelAudio[next[1]])[0];
-            audio.currentTime = 0;
-            audio.play();
+            if (audio.duration > 0) {
+                audio.currentTime = 0;
+                audio.play();
+            }
             initStep();
             break;
         case 'pause':
@@ -881,7 +885,9 @@ function loadSavedStateFileRead() {
         bgmid = NovelAudio[savegame.BGMPlaying];
         if ($('audio.bgm#media_' + bgmid)[0] != undefined) {
             var audio = $('audio.bgm#media_' + bgmid)[0];
-            audio.play();
+            if (audio.duration > 0) {
+                audio.play();
+            }
         } else {
             addPreloadMusic(savegame.BGMPlaying);
         }
