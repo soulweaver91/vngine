@@ -820,21 +820,21 @@ function fadeColor(color,duration,destroy) {
 function saveCurrentState(manual) {
     manual = typeof manual !== 'undefined' ? manual : true;
     savegame = {};
-    savegame.NovelID = NovelID;
-    savegame.NovelRunState = NovelRunState;
-    savegame.NovelCurrentSceneFile = NovelCurrentSceneFile;
-    savegame.NovelCurrentSceneHash = NovelCurrentSceneHash;
-    savegame.Variables = Variables;
-    savegame.Backgrounds = {};
-    savegame.Characters = {};
-    savegame.Overlays = {};
-    savegame.Musics = {};
-    savegame.BGMPlaying = -1;
-    var j = 0; $('.background > img').each(function() { savegame.Backgrounds[j] = {URL: $(this).attr("src").replace("vn/"+NovelID+"/bg/","")}; j++; });
-        j = 0; $('.character > img').each(function() { savegame.Characters[j] = {URL: $(this).attr("src").replace("vn/"+NovelID+"/char/","")}; j++; });
-        j = 0; $('.overlay > img').each(function() { savegame.Overlays[j] = {URL: $(this).attr("src").replace("vn/"+NovelID+"/bg/",""), Type: "image"}; j++; });
-               $('.overlay.color-overlay').each(function() { savegame.Overlays[j] = {Style: $(this).attr("style"), Type: "color"}; j++; });
-        j = 0; $('.bgm').each(function() { savegame.Musics[j] = {URL: $(this).attr("src").replace("vn/"+NovelID+"/media/","")}; if(!(this.paused)) { savegame.BGMPlaying = $(this).attr("src").replace("vn/"+NovelID+"/media/",""); } j++; });
+    savegame.n = NovelID;
+    savegame.s = NovelRunState;
+    savegame.f = NovelCurrentSceneFile;
+    savegame.h = NovelCurrentSceneHash;
+    savegame.v = Variables;
+    savegame.lb = {};
+    savegame.lc = {};
+    savegame.lo = {};
+    savegame.lm = {};
+    savegame.m = -1;
+    var j = 0; $('.background > img').each(function() { savegame.lb[j] = {URL: $(this).attr("src").replace("vn/"+NovelID+"/bg/","")}; j++; });
+        j = 0; $('.character > img').each(function() { savegame.lc[j] = {URL: $(this).attr("src").replace("vn/"+NovelID+"/char/","")}; j++; });
+        j = 0; $('.overlay > img').each(function() { savegame.lo[j] = {URL: $(this).attr("src").replace("vn/"+NovelID+"/bg/",""), Type: "image"}; j++; });
+               $('.overlay.color-overlay').each(function() { savegame.lo[j] = {Style: $(this).attr("style"), Type: "color"}; j++; });
+        j = 0; $('.bgm').each(function() { savegame.lm[j] = {URL: $(this).attr("src").replace("vn/"+NovelID+"/media/","")}; if(!(this.paused)) { savegame.m = $(this).attr("src").replace("vn/"+NovelID+"/media/",""); } j++; });
     //alert(JSON.stringify(savegame));
     //location.href = "data:application/octet-stream," + encodeURIComponent($.base64.encode(JSON.stringify(savegame)));
     if (manual) { $("#savedata")[0].value = $.base64.encode(JSON.stringify(savegame)); }
@@ -856,11 +856,11 @@ function loadSavedState(manual,savedata) {
             $("#loaddata")[0].value = ""; //$.base64.decode(data);
             savegame = JSON.parse($.base64.decode(data));
             $('#loadform').slideUp(1500);
-            NovelID = savegame.NovelID;
+            NovelID = savegame.n;
             stopMusic();
             $('.character, .background, .overlay, .preloader').remove();
             IDs.reInitialize();
-            NovelCurrentSceneFile = savegame.NovelCurrentSceneFile;
+            NovelCurrentSceneFile = savegame.f;
             readScene(NovelCurrentSceneFile,"start",true);
         } catch(err) {
             if (err == "SyntaxError: JSON.parse: unexpected end of data") {
@@ -871,28 +871,28 @@ function loadSavedState(manual,savedata) {
     }
 }
 function loadSavedStateFileRead() {
-    if (NovelCurrentSceneHash != savegame.NovelCurrentSceneHash) {
-        VNgineError("Scene hash doesn't match! (This probably means the novel files have been changed.)",savegame.NovelCurrentSceneHash + "==" + NovelCurrentSceneHash,false);
+    if (NovelCurrentSceneHash != savegame.h) {
+        VNgineError("Scene hash doesn't match! (This probably means the novel files have been changed.)",savegame.h + "==" + NovelCurrentSceneHash,false);
     }
-    Variables = savegame.Variables;
-    $.each(savegame.Backgrounds, function(ind,val) { $('#container').append('<div class="background" id="bg_' + IDs.getBGID() + '"><img src="vn/' + NovelID +'/bg/' + val.URL + '"></div>');});
-    $.each(savegame.Characters, function(ind,val) { $('#container').append('<div class="character" id="char_' + IDs.getCharID() + '"><img src="vn/' + NovelID +'/char/' + val.URL + '"></div>');});
-    $.each(savegame.Overlays, function(ind,val) { switch(val.Type) {
+    Variables = savegame.v;
+    $.each(savegame.lb, function(ind,val) { $('#container').append('<div class="background" id="bg_' + IDs.getBGID() + '"><img src="vn/' + NovelID +'/bg/' + val.URL + '"></div>');});
+    $.each(savegame.lc, function(ind,val) { $('#container').append('<div class="character" id="char_' + IDs.getCharID() + '"><img src="vn/' + NovelID +'/char/' + val.URL + '"></div>');});
+    $.each(savegame.lo, function(ind,val) { switch(val.Type) {
         case "image": $('#container').append('<div class="overlay" id="overlay_' + IDs.getOverlayID() + '"><img src="vn/' + NovelID +'/bg/' + val.URL + '"></div>'); break;
         case "color": var id = IDs.getOverlayID().toString(); $('#container').append('<div class="overlay color-overlay" id="overlay_' + id + '" style="' + val.Style + '"></div>'); break;
         }});
-    if (savegame.BGMPlaying != -1) {
-        bgmid = NovelAudio[savegame.BGMPlaying];
+    if (savegame.m != -1) {
+        bgmid = NovelAudio[savegame.m];
         if ($('audio.bgm#media_' + bgmid)[0] != undefined) {
             var audio = $('audio.bgm#media_' + bgmid)[0];
             if (audio.duration > 0) {
                 audio.play();
             }
         } else {
-            addPreloadMusic(savegame.BGMPlaying);
+            addPreloadMusic(savegame.m);
         }
     }
-    NovelRunState = savegame.NovelRunState - 1;
+    NovelRunState = savegame.s - 1;
     savegame = {};
     OverrideStep = false;
     initStep();
