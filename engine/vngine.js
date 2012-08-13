@@ -663,13 +663,21 @@ characterTyper.prototype.typeCharacter = function() {
             setTimeout(function() { self.Parent.typeCharacter(); },TextSpeed);
         }
     } else {
-        if (TextSpeed > 0) {
+        var chr = this.Message.charAt(0);
+        if (TextSpeed == 0) {
             var chr = this.Message.charAt(0);
+            while (!(chr == "{")) {
+                $(this.Element).append(chr);
+                this.Message = this.Message.slice(1);
+                chr = this.Message.charAt(0);
+                if (this.Message == "") { setTimeout(function() { self.typeCharacter(); },0); return false; }
+            }
+        }
             if (chr == "{") {
                 // this branch will be entered when a modifier tag in the source line is encountered
-                var tag = this.Message.match(/\{(.+?)(.*?)\}(.+?)\{\/\1}/);
+                var tag = this.Message.match(/\{([^{}]+)([^{}]*?)\}(.+?)\{\/\1}/);
                 if (tag === null) {
-                    var tag = this.Message.match(/\{(.+?)( .*?)? ?\/\}/);
+                    var tag = this.Message.match(/\{([^{}]+?)( [^{}]*?)? ?\/\}/);
                     if (tag === null) {
                         $(this.Element).append(chr);
                         this.Message = this.Message.slice(1);
@@ -678,7 +686,24 @@ characterTyper.prototype.typeCharacter = function() {
                         this.Message = this.Message.replace(tag[0],"");
                         switch(tag[1]) {
                             case "pause":
-                                setTimeout(function() {self.typeCharacter(); },TextSpeed + parseInt(tag[2]));
+                                if (TextSpeed > 0) {
+                                    setTimeout(function() {self.typeCharacter(); },TextSpeed + parseInt(tag[2]));
+                                } else {
+                                    setTimeout(function() {self.typeCharacter(); },0);
+                                }
+                                break;
+                            case "ln":
+                                $(this.Element).append("<br />");
+                                VNgineLog("TextParser: added a newline");
+                                setTimeout(function() {self.typeCharacter(); },TextSpeed);
+                                break;
+                            case "speed":
+                                if (TextSpeed > 0) { TextSpeed = parseInt(tag[2]); }
+                                VNgineLog("TextParser: set text speed to " + parseInt(tag[2]));
+                                setTimeout(function() {self.typeCharacter(); },TextSpeed);
+                                break;
+                            case "auto":
+                                this.destroy();
                                 break;
                             default:
                                 this.Message = "[unknown tag " + tag[1] + "]" + this.Message;
@@ -694,38 +719,6 @@ characterTyper.prototype.typeCharacter = function() {
                 $(this.Element).append(chr);
                 this.Message = this.Message.slice(1);
                 setTimeout(function(){self.typeCharacter();},TextSpeed);
-            }
-        } else {
-            var chr = this.Message.charAt(0);
-            while ((!(chr == "{")) && (this.Message.length > 0)) {
-                $(this.Element).append(chr);
-                this.Message = this.Message.slice(1);
-                var chr = this.Message.charAt(0);
-            }
-            if (this.Message.length == 0) {
-                setTimeout(function(){self.typeCharacter();},0);
-            } else {
-                var tag = this.Message.match(/\{(.+?)(.*?)\}(.+?)\{\/\1}/);
-                if (tag === null) {
-                    var tag = this.Message.match(/\{(.+?)( .*?)? ?\/\}/);
-                    if (tag === null) {
-                        $(this.Element).append(chr);
-                        this.Message = this.Message.slice(1);
-                        setTimeout(function(){self.typeCharacter();},0);
-                    } else {
-                        this.Message = this.Message.replace(tag[0],"");
-                        switch(tag[1]) {
-                            case "pause": break;
-                            default:
-                                this.Message = "[unknown tag " + tag[1] + "]" + this.Message;
-                                VNgineLog("TextParser: encountered an undefined tag type " + tag[1]);
-                            break;
-                        }
-                        setTimeout(function() {self.typeCharacter(); },0);
-                    }
-                } else {
-                    this.createSubParser(tag);
-                }
             }
         }
     }
@@ -749,6 +742,7 @@ characterTyper.prototype.createSubParser = function(tag) {
         case "sub": modifier = "font-size: .83em; vertical-align: sub;"; break;
         case "lsp": modifier = "letter-spacing: "+tagvars+";"; break;
         case "hilite": modifier = "background-color: "+tagvars+";"; break;
+        case "center": modifier = "display: inline-block; width: 100%; text-align: center;"; break;
         default: this.Message = "[unknown tag " + tagtype + "]" + this.Message;
             setTimeout(function() {self.typeCharacter(); },TextSpeed);
             VNgineLog("TextParser: encountered an undefined tag type " + tagtype);
@@ -761,6 +755,16 @@ characterTyper.prototype.createSubParser = function(tag) {
         childTyper.Parent = this;
         childTyper.Message = tag[3];
         setTimeout(function() {childTyper.typeCharacter(); },TextSpeed);
+    }
+}
+
+characterTyper.prototype.destroy = function() {
+    this.Message = "";
+    if (this.Parent !== undefined) {
+        this.Parent.destroy();
+    } else {
+        addHistoryItem();
+        initStep();
     }
 }
 
