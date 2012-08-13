@@ -5,7 +5,7 @@
  ************************************************************/
  
 var VNGINE_VERSION = "0.6";
-var VNGINE_EVENT_SET_VERSION = 1;
+var VNGINE_EVENT_SET_VERSION = 2;
 
 var NovelCurrentSceneFile = "";
 var NovelCurrentSceneHash = "";
@@ -440,6 +440,11 @@ function nextline() {
     var params = readLine().split(" ");
     var next = [params.splice(0,1)[0]];
     next.push(params.join(" "));
+    if (next[0][0] == "#") {
+         VNgineLog("Parser: found a comment on line " + (NovelRunState - 1) + ".");
+         initStep();
+         return false;
+    }
     VNgineLog("Parser: read event " + next[0] + " on line " + (NovelRunState - 1) + ".");
     
     switch (next[0]) {
@@ -468,21 +473,22 @@ function nextline() {
             Typer.typeCharacter();
             break;
         case 'setchar':
-            addCharacter(params[1],params[0]==1,true);
+            addCharacter(params[1],params[0],true);
             VNgineLog("setchar: Created an image element for character file " + next[1]);
             break;
         case 'clrchar':
-            if (params[0]==1) {
+            var ms = parseInt(params[0]);
+            if (ms == 0) {
                 $('.character').remove();
                 initStep();
             } else {
-                $('.character').fadeOut(1000,function() { $(this).remove(); });
-                initStep(1000);
+                $('.character').fadeOut(ms,function() { $(this).remove(); });
+                initStep(ms);
             }
             VNgineLog("clrchar: Destroying character layer(s)");
             break;
         case 'setbg':
-            addBackground(params[1],params[0]==1);
+            addBackground(params[1],params[0]);
             VNgineLog("setbg: Created an image element for background file " + next[1]);
             break;
         case 'choice':
@@ -583,9 +589,9 @@ function nextline() {
         case 'ending':
             $('#messagebox').html("").parent().hide();
             $('#messagename').html("").parent().hide();
-            fadeColor("white",5000,true);
+            fadeColor("white",param[1],true);
             stopMusic();
-            var audio = $('audio.bgm#media_' + NovelAudio[next[1]])[0];
+            var audio = $('audio.bgm#media_' + NovelAudio[param[0]])[0];
             if (audio.duration > 0) {
                 audio.currentTime = 0;
                 audio.play();
@@ -597,11 +603,11 @@ function nextline() {
             });
             break;
         case 'fade':
-            fadeColor(params[1],params[2],params[0]==1);
-            initStep(params[2]);
+            fadeColor(params[0],params[1],params[2]==1);
+            initStep(params[1]);
             break;
         case 'overlay':
-            addOverlay(next[1]);
+            addOverlay(params[1],params[0]);
             VNgineLog("setbg: Created an image element for overlay file " + next[1]);
             break;
         case 'clroverlay':
@@ -758,27 +764,30 @@ characterTyper.prototype.createSubParser = function(tag) {
     }
 }
 
-function addBackground(path,instant) {
+function addBackground(path,duration) {
+    duration = typeof duration !== 'undefined' ? parseInt(duration) : 1000;
     $('#container').addClass("busy");
     var id = IDs.getBGID().toString();
     $('#container').append('<div class="background" id="bg_' + id + '"><img src="vn/' + NovelID +'/bg/' + path + '"></div>');
-    if (instant) {
+    if (duration == 0) {
         $('#bg_' + id + ' > img').load(function() { $('#container').removeClass("busy"); $('.background:not(#bg_' + id + ')').remove(); initStep(); });
     } else {
-        $('#bg_' + id + ' > img').hide().load(function() { $('#container').removeClass("busy"); $(this).fadeIn(1000,function(){ $('.background:not(#bg_' + id + ')').remove(); initStep(); })});
+        $('#bg_' + id + ' > img').hide().load(function() { $('#container').removeClass("busy"); $(this).fadeIn(duration,function(){ $('.background:not(#bg_' + id + ')').remove(); initStep(); })});
     }
 }
-function addOverlay(path,instant) {
+function addOverlay(path,duration) {
+    duration = typeof duration !== 'undefined' ? parseInt(duration) : 1000;
     $('#container').addClass("busy");
     var id = IDs.getOverlayID().toString();
     $('#container').append('<div class="overlay" id="overlay_' + id + '"><img src="vn/' + NovelID +'/bg/' + path + '"></div>');
-    $('#overlay_' + id + ' > img').hide().load(function() { $('#container').removeClass("busy"); $(this).fadeIn(1000,function(){ $('.overlay:not(#overlay_' + id + ')').remove(); initStep(); })});
+    $('#overlay_' + id + ' > img').hide().load(function() { $('#container').removeClass("busy"); $(this).fadeIn(duration,function(){ $('.overlay:not(#overlay_' + id + ')').remove(); initStep(); })});
 }
-function addCharacter(path,instant,clear_others) {
+function addCharacter(path,duration,clear_others) {
+    duration = typeof duration !== 'undefined' ? parseInt(duration) : 1000;
     $('#container').addClass("busy");
     var id = IDs.getCharID().toString();
     $('#container').append('<div class="character" id="char_' + id + '"><img src="vn/' + NovelID +'/char/' + path + '"></div>');
-    if (instant) {
+    if (duration == 0) {
         $('#char_' + id + ' > img').hide().load(function() {
             $('#container').removeClass("busy");
             if (clear_others) {
@@ -789,9 +798,9 @@ function addCharacter(path,instant,clear_others) {
     } else {
         $('#char_' + id + ' > img').hide().load(function() {
             $('#container').removeClass("busy");
-            $(this).fadeIn(1000,function() { initStep(500); });
+            $(this).fadeIn(duration,function() { initStep(duration / 2); });
             if (clear_others) {
-                $('.character:not(#char_' + id + ')').delay(500).fadeOut(1000,function() {
+                $('.character:not(#char_' + id + ')').delay(duration / 2).fadeOut(duration,function() {
                     $(this).remove();
                 })
             };
