@@ -673,53 +673,52 @@ characterTyper.prototype.typeCharacter = function() {
                 if (this.Message == "") { setTimeout(function() { self.typeCharacter(); },0); return false; }
             }
         }
-            if (chr == "{") {
-                // this branch will be entered when a modifier tag in the source line is encountered
-                var tag = this.Message.match(/\{([^{}]+)([^{}]*?)\}(.+?)\{\/\1}/);
+        if (chr == "{") {
+            // this branch will be entered when a modifier tag in the source line is encountered
+            var tag = this.Message.match(/\{([^{}]+)([^{}]*?)\}(.+?)\{\/\1}/);
+            if (tag === null) {
+                var tag = this.Message.match(/\{([^{}]+?)( [^{}]*?)? ?\/\}/);
                 if (tag === null) {
-                    var tag = this.Message.match(/\{([^{}]+?)( [^{}]*?)? ?\/\}/);
-                    if (tag === null) {
-                        $(this.Element).append(chr);
-                        this.Message = this.Message.slice(1);
-                        setTimeout(function(){self.typeCharacter();},TextSpeed);
-                    } else {
-                        this.Message = this.Message.replace(tag[0],"");
-                        switch(tag[1]) {
-                            case "pause":
-                                if (TextSpeed > 0) {
-                                    setTimeout(function() {self.typeCharacter(); },TextSpeed + parseInt(tag[2]));
-                                } else {
-                                    setTimeout(function() {self.typeCharacter(); },0);
-                                }
-                                break;
-                            case "ln":
-                                $(this.Element).append("<br />");
-                                VNgineLog("TextParser: added a newline");
-                                setTimeout(function() {self.typeCharacter(); },TextSpeed);
-                                break;
-                            case "speed":
-                                if (TextSpeed > 0) { TextSpeed = parseInt(tag[2]); }
-                                VNgineLog("TextParser: set text speed to " + parseInt(tag[2]));
-                                setTimeout(function() {self.typeCharacter(); },TextSpeed);
-                                break;
-                            case "auto":
-                                this.destroy();
-                                break;
-                            default:
-                                this.Message = "[unknown tag " + tag[1] + "]" + this.Message;
-                                VNgineLog("TextParser: encountered an undefined tag type " + tag[1]);
-                                setTimeout(function() {self.typeCharacter(); },TextSpeed);
-                            break;
-                        }
-                    }
+                    $(this.Element).append(chr);
+                    this.Message = this.Message.slice(1);
+                    setTimeout(function(){self.typeCharacter();},TextSpeed);
                 } else {
-                    this.createSubParser(tag);
+                    this.Message = this.Message.replace(tag[0],"");
+                    switch(tag[1]) {
+                        case "pause":
+                            if (TextSpeed > 0) {
+                                setTimeout(function() {self.typeCharacter(); },TextSpeed + parseInt(tag[2]));
+                            } else {
+                                setTimeout(function() {self.typeCharacter(); },0);
+                            }
+                            break;
+                        case "ln":
+                            $(this.Element).append("<br />");
+                            VNgineLog("TextParser: added a newline");
+                            setTimeout(function() {self.typeCharacter(); },TextSpeed);
+                            break;
+                        case "speed":
+                            if (TextSpeed > 0) { TextSpeed = parseInt(tag[2]); }
+                            VNgineLog("TextParser: set text speed to " + parseInt(tag[2]));
+                            setTimeout(function() {self.typeCharacter(); },TextSpeed);
+                            break;
+                        case "auto":
+                            this.destroy();
+                            break;
+                        default:
+                            this.Message = "[unknown tag " + tag[1] + "]" + this.Message;
+                            VNgineLog("TextParser: encountered an undefined tag type " + tag[1]);
+                            setTimeout(function() {self.typeCharacter(); },TextSpeed);
+                        break;
+                    }
                 }
             } else {
-                $(this.Element).append(chr);
-                this.Message = this.Message.slice(1);
-                setTimeout(function(){self.typeCharacter();},TextSpeed);
+                this.createSubParser(tag);
             }
+        } else {
+            $(this.Element).append(chr);
+            this.Message = this.Message.slice(1);
+            setTimeout(function(){self.typeCharacter();},TextSpeed);
         }
     }
 }
