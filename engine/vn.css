@@ -2,6 +2,7 @@
 body { font-family: "Trebuchet MS", sans-serif; }
 #container, button { font-family: sans-serif; }
 #container { border: 3px solid black; padding: 0; margin-left: auto; margin-right: auto; position: relative; overflow: hidden; background-color: white; }
+#container_inner { width: 800px; height: 600px; position: relative; overflow: hidden; }
 .character, .background { height: 0px; overflow: visible; position: absolute; top: 0; left: 0; }
 #container, .character img, .background img { width: 800px; height: 600px; }
 #container.busy { cursor: wait; }
@@ -27,6 +28,7 @@ body { font-family: "Trebuchet MS", sans-serif; }
 .character { z-index: 5; } .character.recent { z-index: 6; }
 .overlay { z-index: 10; position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
 .overlay.recent { z-index: 11; }
+.overlay.overlay_effect { z-index: 15; }
 #messagename_container, #messagecontrols_container { z-index: 1001; }
 #messagebox_container { z-index: 1000; }
 

@@ -59,47 +59,28 @@ String.prototype.ltrim = function() {
 }
 
 String.prototype.toMurmurHash = function() {
-        /**
-        * JS Implementation of MurmurHash2
-        *
-        * @author <a href="mailto:gary.court@gmail.com">Gary Court</a>
-        * @see http://github.com/garycourt/murmurhash-js
-        * @author <a href="mailto:aappleby@gmail.com">Austin Appleby</a>
-        * @see http://sites.google.com/site/murmurhash/
-        *
-        * @param {string} str ASCII only
-        * @param {number} seed Positive integer only
-        * @return {number} 32-bit positive integer hash
-        */
-    var str = this;
-    var seed = 27038;
-    var l = str.length,
-    h = seed ^ l,
-    i = 0,
-    k;
+    /* JS Implementation of MurmurHash2 by
+        * Gary Court, gary.court@gmail.com, http://github.com/garycourt/murmurhash-js
+        * Austin Appleby, aappleby@gmail.com, http://sites.google.com/site/murmurhash/  */
+    var s = this, t = 27038; var l = s.length, h = t ^ l, i = 0, k, a = 0x5bd1e995, b = 0xffff;
     
     while (l >= 4) {
-        k = ((str.charCodeAt(i) & 0xff)) | ((str.charCodeAt(++i) & 0xff) << 8) |
-            ((str.charCodeAt(++i) & 0xff) << 16) | ((str.charCodeAt(++i) & 0xff) << 24);
-      
-        k = (((k & 0xffff) * 0x5bd1e995) + ((((k >>> 16) * 0x5bd1e995) & 0xffff) << 16));
-        k ^= k >>> 24;
-        k = (((k & 0xffff) * 0x5bd1e995) + ((((k >>> 16) * 0x5bd1e995) & 0xffff) << 16));
-
-        h = (((h & 0xffff) * 0x5bd1e995) + ((((h >>> 16) * 0x5bd1e995) & 0xffff) << 16)) ^ k;
-
-        l -= 4; ++i;
+        k = ((s.charCodeAt(i) & 0xff)) | ((s.charCodeAt(++i) & 0xff) << 8) |
+            ((s.charCodeAt(++i) & 0xff) << 16) | ((s.charCodeAt(++i) & 0xff) << 24);
+        k = (((k & b) * a) + ((((k >>> 16) * a) & b) << 16));     k ^= k >>> 24;
+        k = (((k & b) * a) + ((((k >>> 16) * a) & b) << 16));
+        h = (((h & b) * a) + ((((h >>> 16) * a) & b) << 16)) ^ k; l -= 4; ++i;
     }
       
     switch (l) {
-    case 3: h ^= (str.charCodeAt(i + 2) & 0xff) << 16;
-    case 2: h ^= (str.charCodeAt(i + 1) & 0xff) << 8;
-    case 1: h ^= (str.charCodeAt(i) & 0xff);
-            h = (((h & 0xffff) * 0x5bd1e995) + ((((h >>> 16) * 0x5bd1e995) & 0xffff) << 16));
+    case 3: h ^= (s.charCodeAt(i + 2) & 0xff) << 16;
+    case 2: h ^= (s.charCodeAt(i + 1) & 0xff) << 8;
+    case 1: h ^= (s.charCodeAt(i) & 0xff);
+            h = (((h & b) * a) + ((((h >>> 16) * a) & b) << 16));
     }
 
     h ^= h >>> 13;
-    h = (((h & 0xffff) * 0x5bd1e995) + ((((h >>> 16) * 0x5bd1e995) & 0xffff) << 16));
+    h = (((h & b) * a) + ((((h >>> 16) * a) & b) << 16));
     h ^= h >>> 15;
 
     return (h >>> 0).toString(16);
@@ -284,7 +265,6 @@ function stopMusic() {
     $('audio.bgm').each(function() {
         this.pause();
     });
-    //$('audio.bgm').remove();
 }
 function addPreloadMusic(filename) {
     id = IDs.getMediaID();
@@ -589,7 +569,7 @@ function nextline() {
         case 'ending':
             $('#messagebox').html("").parent().hide();
             $('#messagename').html("").parent().hide();
-            fadeColor("white",param[1],true);
+            addColorLayer("white",param[1],true);
             stopMusic();
             var audio = $('audio.bgm#media_' + NovelAudio[param[0]])[0];
             if (audio.duration > 0) {
@@ -603,8 +583,22 @@ function nextline() {
             });
             break;
         case 'fade':
-            fadeColor(params[0],params[1],params[2]==1);
+            addColorLayer(params[0],params[1],params[2]==1);
             initStep(params[1]);
+            break;
+        case 'effect':
+            switch (params[0]) {
+                case "flash":
+                    var el = addColorLayer(params[1],0,false);
+                    el.addClass("overlay_effect");
+                    setTimeout(function(a){ return function() { a.remove(); initStep(); }}(el),parseInt(params[2]));
+                    break;
+                case "shake":
+                    setTimeout(function(a){ return function() { shaker(a,0.5,function(){ initStep(); }); }}(parseInt(params[1])),0);
+                    break;
+                default:
+                    VNgineError('Unknown effect ' + params[1],next[1],false);
+            }
             break;
         case 'overlay':
             addOverlay(params[1],params[0]);
@@ -697,6 +691,10 @@ characterTyper.prototype.typeCharacter = function() {
                             VNgineLog("TextParser: added a newline");
                             setTimeout(function() {self.typeCharacter(); },TextSpeed);
                             break;
+                        case "shake":
+                            VNgineLog("TextParser: executed a shaker");
+                            setTimeout( function(a) { return function() { shaker(10,0.5,function() { a.typeCharacter();});};}(self),0);
+                            break;
                         case "speed":
                             if (TextSpeed > 0) { TextSpeed = parseInt(tag[2]); }
                             VNgineLog("TextParser: set text speed to " + parseInt(tag[2]));
@@ -767,11 +765,27 @@ characterTyper.prototype.destroy = function() {
     }
 }
 
+function shaker(strength,speed,callback) {
+    if (strength > 0) {
+        //var dir = Math.random()*2*Math.PI;
+        var dir = (strength/speed)*1.25*Math.PI;
+        var xd = strength * Math.cos(dir);
+        var yd = strength * Math.sin(dir);
+        strength -= speed;
+        //console.log("set coordinates for divs to " + xd + " hor " + yd + " ver, strength " + strength);
+        $("#container_inner").css("left",xd + "px").css("top",yd + "px");
+        setTimeout(function(s,p,c){ return function(){ shaker(s,p,c); }}(strength, speed, callback),50);
+    } else {
+        $("#container_inner").css("left","auto").css("top","auto");
+        setTimeout(callback,0);
+    }
+}
+
 function addBackground(path,duration) {
     duration = typeof duration !== 'undefined' ? parseInt(duration) : 1000;
     $('#container').addClass("busy");
     var id = IDs.getBGID().toString();
-    $('#container').append('<div class="background" id="bg_' + id + '"><img src="vn/' + NovelID +'/bg/' + path + '"></div>');
+    $('#container_inner').append('<div class="background" id="bg_' + id + '"><img src="vn/' + NovelID +'/bg/' + path + '"></div>');
     if (duration == 0) {
         $('#bg_' + id + ' > img').load(function() { $('#container').removeClass("busy"); $('.background:not(#bg_' + id + ')').remove(); initStep(); });
     } else {
@@ -782,14 +796,14 @@ function addOverlay(path,duration) {
     duration = typeof duration !== 'undefined' ? parseInt(duration) : 1000;
     $('#container').addClass("busy");
     var id = IDs.getOverlayID().toString();
-    $('#container').append('<div class="overlay" id="overlay_' + id + '"><img src="vn/' + NovelID +'/bg/' + path + '"></div>');
+    $('#container_inner').append('<div class="overlay" id="overlay_' + id + '"><img src="vn/' + NovelID +'/bg/' + path + '"></div>');
     $('#overlay_' + id + ' > img').hide().load(function() { $('#container').removeClass("busy"); $(this).fadeIn(duration,function(){ $('.overlay:not(#overlay_' + id + ')').remove(); initStep(); })});
 }
 function addCharacter(path,duration,clear_others) {
     duration = typeof duration !== 'undefined' ? parseInt(duration) : 1000;
     $('#container').addClass("busy");
     var id = IDs.getCharID().toString();
-    $('#container').append('<div class="character" id="char_' + id + '"><img src="vn/' + NovelID +'/char/' + path + '"></div>');
+    $('#container_inner').append('<div class="character" id="char_' + id + '"><img src="vn/' + NovelID +'/char/' + path + '"></div>');
     if (duration == 0) {
         $('#char_' + id + ' > img').hide().load(function() {
             $('#container').removeClass("busy");
@@ -820,13 +834,14 @@ function userChoice(option) {
     initStep();
 }
 
-function fadeColor(color,duration,destroy) {
+function addColorLayer(color,duration,destroy) {
     color = typeof color !== 'undefined' ? color : "#ffffff";
     duration = typeof duration !== 'undefined' ? parseInt(duration) : 1000;
     destroy = typeof destroy !== 'undefined' ? destroy : false;
     var id = IDs.getOverlayID().toString();
-    $('#container').append('<div class="overlay color-overlay" id="overlay_' + id + '" style="background-color: ' + color + '"></div>');
+    $('#container_inner').append('<div class="overlay color-overlay" id="overlay_' + id + '" style="background-color: ' + color + '"></div>');
     $('#overlay_' + id).hide().fadeIn(duration,function() { if (destroy) { $('.character').remove(); $('.background').remove(); }});
+    return $('#overlay_' + id);
 }
 
 function saveCurrentState(manual) {
