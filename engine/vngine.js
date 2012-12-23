@@ -672,9 +672,9 @@ characterTyper.prototype.typeCharacter = function() {
         }
         if (chr == "{") {
             // this branch will be entered when a modifier tag in the source line is encountered
-            var tag = this.Message.match(/\{([^{}]+)([^{}]*?)\}(.+?)\{\/\1}/);
+            var tag = this.Message.match(/^\{([^{}]+)([^{}]*?)\}(.+?)\{\/\1}/);
             if (tag === null) {
-                var tag = this.Message.match(/\{([^{}]+?)( [^{}]*?)? ?\/\}/);
+                var tag = this.Message.match(/^\{([^{}]+?)( [^{}]*?)? ?\/\}/);
                 if (tag === null) {
                     $(this.Element).append(chr);
                     this.Message = this.Message.slice(1);
