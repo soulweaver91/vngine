@@ -16,6 +16,7 @@ var NovelLabels = {};
 var NovelAudio = {};
 var MsgHistory = [];
 var NameHistory = [];
+var Characters = {};
 var NovelHistorySavedState = "";
 var NovelHistorySavedStateName = "";
 var TextSpeed = 30;
@@ -52,7 +53,8 @@ $(document).ready(function(){
         NovelID = hash.replace("#","");
     }
     $('head').append('<link rel="stylesheet" type="text/css" href="vn/' + NovelID + '/default.css">');
-    readScene("default.dat","start",false);
+    Characters["default"] = new gameCharacter('','','');
+    loadCharacters();
 });
 String.prototype.ltrim = function() {
     return this.replace(/^\s+/,"");
@@ -250,6 +252,21 @@ function readScene(filename,label,loading) {
         if (loading) { loadSavedStateFileRead(); }
     }).error(function() {
         VNgineError("Failed to read the scene file.",filename,true);
+    });
+}
+function loadCharacters() {
+    loading = typeof loading !== 'undefined' ? loading : false;
+    $('#container').addClass("busy");
+    $.get("vn/" + NovelID + "/characters.dat", function(data) {
+        var charsdata = data.split(/\r?\n/);
+        $.each(charsdata, function(key,value) {
+            var chardata = value.ltrim().split(":");
+            Characters[chardata[0]] = new gameCharacter(chardata[0],chardata[1],chardata[2]);
+        });
+        $('#container').removeClass("busy");
+        readScene("default.dat","start",false);
+    }).error(function() {
+        VNgineError("Failed to load the character database.",'',true);
     });
 }
 
@@ -455,6 +472,15 @@ function nextline() {
             Typer.Element = $('#messagebox > span')[0];
             Typer.typeCharacter();
             break;
+        case 'chshow':
+            Characters[params[0]].insert(params[1]);
+            break;
+        case 'chhide':
+            Characters[params[0]].remove(params[1]);
+            break;
+        case 'chset':
+            Characters[params[0]].setImage(params[1]);
+            break;
         case 'setchar':
             addCharacter(params[1],params[0],true);
             VNgineLog("setchar: Created an image element for character file " + next[1]);
@@ -639,6 +665,52 @@ function nextline() {
     }
 }
 
+function gameCharacter(name,fname,sound) {
+    this.UniqueName = ((name !== 'undefined') ? name : "Char_" + IDs.getCharID().toString());
+    this.FriendlyName = ((fname !== 'undefined') ? fname : ((name !== 'undefined') ? this.UniqueName : "???"));
+    this.TextSound = "";
+    this.CurrentImage = "default.png";
+    this.Visible = false;
+}
+gameCharacter.prototype.setName = function(newName) {
+    this.FriendlyName = typeof newName !== 'undefined' ? newName : this.FriendlyName;
+}
+gameCharacter.prototype.setImage = function(newImage) {
+    if (this.Visible) {
+    
+    } else {
+        this.CurrentImage = typeof newImage !== 'undefined' ? newImage : this.CurrentImage;
+    }
+    initStep();
+}
+gameCharacter.prototype.move = function() { }
+gameCharacter.prototype.remove = function(duration) {
+    if (!this.Visible) {
+        initStep();
+        return false;
+    }
+    duration = typeof duration !== 'undefined' ? parseInt(duration) : 1000;
+    $('#char_' + this.UniqueName + ' > img').fadeOut(duration,function() {initStep(); $(this.parentNode).remove();});
+    this.Visible = false;
+}
+gameCharacter.prototype.insert = function(duration) {
+    if (this.Visible) {
+        initStep();
+        return false;
+    }
+    duration = typeof duration !== 'undefined' ? parseInt(duration) : 1000;
+    $('#container').addClass("busy");
+    $('#container_inner').append('<div class="character" id="char_' + this.UniqueName + '"><img alt=""></div>');
+    $('#char_' + this.UniqueName + ' > img').hide().error(function() {
+        $('#container').removeClass("busy");
+        initStep();
+    }).load(function() {
+        $('#container').removeClass("busy");
+        $(this).fadeIn(duration,initStep(duration));
+    }).attr('src','vn/' + NovelID + '/char/' + this.UniqueName + '/' + this.CurrentImage);
+    this.Visible = true;
+}
+
 characterTyper = function() {
     this.Message = "";
     this.Parent = undefined;
@@ -757,7 +829,6 @@ characterTyper.prototype.createSubParser = function(tag) {
         setTimeout(function() {childTyper.typeCharacter(); },TextSpeed);
     }
 }
-
 characterTyper.prototype.destroy = function() {
     this.Message = "";
     if (this.Parent !== undefined) {
@@ -802,7 +873,7 @@ function addOverlay(path,duration) {
     $('#container_inner').append('<div class="overlay" id="overlay_' + id + '"><img src="vn/' + NovelID +'/bg/' + path + '"></div>');
     $('#overlay_' + id + ' > img').hide().load(function() { $('#container').removeClass("busy"); $(this).fadeIn(duration,function(){ $('.overlay:not(#overlay_' + id + ')').remove(); initStep(); })});
 }
-function addCharacter(path,duration,clear_others) {
+/*function addCharacter(path,duration,clear_others) {
     duration = typeof duration !== 'undefined' ? parseInt(duration) : 1000;
     $('#container').addClass("busy");
     var id = IDs.getCharID().toString();
@@ -827,7 +898,7 @@ function addCharacter(path,duration,clear_others) {
         });
         
     }
-}
+}*/
 
 function userChoice(option) {
     var msgbox = document.getElementById('messagebox');
