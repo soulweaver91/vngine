@@ -126,7 +126,9 @@ $(document).keydown(function(event) {
             break;
         case 32:
             event.preventDefault();
-            $("#hide_msgbox").click();
+            if (!($(document.activeElement).is('#hide_msgbox'))) {
+                $("#hide_msgbox").click();
+            }
             break;
         case 33:
             event.preventDefault();
@@ -169,6 +171,7 @@ $('#hide_msgbox').live("click", function() {
     if ($('#messagenext,.choice').length > 0) {
         $('#messagebox_container').toggle();
         $('#messagename_container').toggle();
+        document.activeElement.blur();
         $('#container').toggleClass("clickable");
     }
 });
