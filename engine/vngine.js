@@ -4,8 +4,8 @@
  * (c) 2012 Soulweaver                                      *
  ************************************************************/
  
-var VNGINE_VERSION = "0.6";
-var VNGINE_EVENT_SET_VERSION = 2;
+var VNGINE_VERSION = "X.1 (New character events branch)";
+var VNGINE_EVENT_SET_VERSION = 3;
 
 var NovelCurrentSceneFile = "";
 var NovelCurrentSceneHash = "";
@@ -27,6 +27,7 @@ var Variables = {
     fname: "Tomoya"
 };
 var OverrideStep = false;
+var LeftOpen = false;
 var NovelAutoSave = "";
 
 function VNgineError(msg,param,fatal) {
@@ -261,7 +262,7 @@ function loadCharacters() {
         var charsdata = data.split(/\r?\n/);
         $.each(charsdata, function(key,value) {
             var chardata = value.ltrim().split(":");
-            Characters[chardata[0]] = new gameCharacter(chardata[0],chardata[1],chardata[2]);
+            Characters[chardata[0]] = new gameCharacter(chardata[0],chardata[1],chardata[2],chardata[3]);
         });
         $('#container').removeClass("busy");
         readScene("default.dat","start",false);
@@ -437,6 +438,9 @@ function evaluateExpression(expr) {
 function nextline() {
     $('#messagenext').remove();
     $('#container').removeClass("clickable");
+    // populate next and params
+    // params is an array of space separated entities from the line
+    // next[0] contains the command, next[1] contains all the rest of the line
     var params = readLine().split(" ");
     var next = [params.splice(0,1)[0]];
     next.push(params.join(" "));
@@ -449,27 +453,43 @@ function nextline() {
     
     switch (next[0]) {
         case 'dialog':
-            $('#messagebox').html("<span></span>");
-            TextSpeed = 30;
             CtrlSkipped = false;
-            next[1] = next[1].replace(/\$@(.+?\b)/g,function(str, p1, offset, s){ return localStorage[p1]; });
-            next[1] = next[1].replace(/\$(.+?\b)/g,function(str, p1, offset, s){ return Variables[p1]; });
-            var StateMsg = next[1];
-            if (next[1].charAt(0) == "[") {
-                var end = next[1].indexOf("]");
-                var side = next[1][end+1] == ">" ? "right" : "left";
-                var other = (side == "right") ? "left" : "right";
-                $('#messagename_container').removeClass("name_" + other).addClass("name_" + side);
-                $('#messagename').show().html(next[1].slice(1,end));
-                if (side == "right") { end++; }
-                StateMsg = next[1].slice(end+2);
+            if (LeftOpen) {
+                $('#messagebox').append("<span></span>");
             } else {
-                $('#messagename').html("").hide();
+                TextSpeed = 30;
+                $('#messagebox').html("<span></span>");
+                var actor = params.splice(0,1)[0];
+                var settings = params.splice(0,1)[0];
+                next[1] = params.join(" ");
             }
-            //StateTyperInterval = setInterval("typechar('messagebox')",30);
+            next[1] = next[1].replace(/\$@(.+?\b)/g,function(str, p1, offset, s){ return localStorage[p1]; })
+                             .replace(/\$(.+?\b)/g,function(str, p1, offset, s){ return Variables[p1]; });
+            var StateMsg = next[1];
+            if (!LeftOpen) {
+                if (actor == "-") {
+                        $('#messagename').html("").parent().hide();
+                } else {
+                    if (typeof Characters[actor] !== 'undefined') {
+                        TextSpeed = Characters[actor].DefaultSpeed;
+                        var side = settings == ">" ? "right" : "left";
+                        var other = (side == "right") ? "left" : "right";
+                        $('#messagename_container').removeClass("name_" + other).addClass("name_" + side);
+                        if (Characters[actor].FriendlyName.length > 0) {
+                            $('#messagename').html(Characters[actor].FriendlyName).parent().show();
+                        } else {
+                            $('#messagename').html("").parent().hide();
+                        }
+                    } else {
+                        $('#messagename').html(Characters['default'].FriendlyName).parent().show();
+                    }
+                }
+            }
+            LeftOpen = false;
+            StateMsg = next[1];
             var Typer = new characterTyper();
             Typer.Message = StateMsg;
-            Typer.Element = $('#messagebox > span')[0];
+            Typer.Element = $('#messagebox > span').last()[0];
             Typer.typeCharacter();
             break;
         case 'chshow':
@@ -479,22 +499,20 @@ function nextline() {
             Characters[params[0]].remove(params[1]);
             break;
         case 'chset':
-            Characters[params[0]].setImage(params[1]);
+            Characters[params[0]].setImage(params[1],params[2]);
             break;
-        case 'setchar':
-            addCharacter(params[1],params[0],true);
-            VNgineLog("setchar: Created an image element for character file " + next[1]);
+        case 'chmove':
+            Characters[params[0]].move(params[1],params[2]);
             break;
-        case 'clrchar':
-            var ms = parseInt(params[0]);
-            if (ms == 0) {
-                $('.character').remove();
-                initStep();
+        case 'chname':
+            var a = params;
+            a.splice(0,1);
+            a = a.join(" ");
+            if ((typeof Characters[params[0]] !== 'undefined') && (params[0] != "-")) {
+                Characters[params[0]].setName(a);
             } else {
-                $('.character').fadeOut(ms,function() { $(this).remove(); });
-                initStep(ms);
+                Characters['default'].setName(a);
             }
-            VNgineLog("clrchar: Destroying character layer(s)");
             break;
         case 'setbg':
             addBackground(params[1],params[0]);
@@ -640,10 +658,18 @@ function nextline() {
         case 'playmus':
             stopMusic();
             var audio = $('audio.bgm#media_' + NovelAudio[next[1]])[0];
-            if (audio.duration > 0) {
-                audio.currentTime = 0;
-                audio.play();
+            try {
+                if (audio.duration > 0) {
+                    audio.currentTime = 0;
+                    audio.play();
+                }
+            } catch (e) {
+                VNgineLog("playmus: failed to start playing " + next[1]);
             }
+            initStep();
+            break;
+        case 'stopmus':
+            stopMusic();
             initStep();
             break;
         case 'pause':
@@ -660,30 +686,99 @@ function nextline() {
             }
             initStep();
             break;
+        // Events deprecated in version set 3
+        case 'setchar':
+        case 'clrchar':
+            VNgineError("The event " + next[0] + " is deprecated in this version of VNgine. "
+                                     + "Please obtain a version that supports event set version 1 or 2.",next[1],false);
+            break;
         default:
             VNgineError('undefined event type "' + next[0] + '"',next[1],false);
     }
 }
 
-function gameCharacter(name,fname,sound) {
-    this.UniqueName = ((name !== 'undefined') ? name : "Char_" + IDs.getCharID().toString());
-    this.FriendlyName = ((fname !== 'undefined') ? fname : ((name !== 'undefined') ? this.UniqueName : "???"));
+function gameCharacter(name,fname,sound,dspeed) {
+    this.UniqueName = ((typeof name !== 'undefined') ? name : "Char_" + IDs.getCharID().toString());
+    this.FriendlyName = ((typeof fname !== 'undefined') ? fname : ((typeof name !== 'undefined') ? this.UniqueName : "???"));
     this.TextSound = "";
     this.CurrentImage = "default.png";
     this.Visible = false;
+    this.Attributes = {};
+    this.DefaultSpeed = ((typeof dspeed !== 'undefined') ? dspeed : ((typeof Characters['default'] !== 'undefined') ? Characters['default'].DefaultSpeed : 30));
+    this.DefaultStyle = "";
 }
 gameCharacter.prototype.setName = function(newName) {
     this.FriendlyName = typeof newName !== 'undefined' ? newName : this.FriendlyName;
-}
-gameCharacter.prototype.setImage = function(newImage) {
-    if (this.Visible) {
-    
-    } else {
-        this.CurrentImage = typeof newImage !== 'undefined' ? newImage : this.CurrentImage;
-    }
     initStep();
 }
-gameCharacter.prototype.move = function() { }
+gameCharacter.prototype.setImage = function(newImage,duration) {
+    if (this.Visible) {
+        duration = typeof duration !== 'undefined' ? parseInt(duration) : 1000;
+        this.CurrentImage = typeof newImage !== 'undefined' ? newImage : this.CurrentImage;
+        $('#container').addClass("busy");
+        $('#char_' + this.UniqueName)[0].id = 'char_' + this.UniqueName + '_old';
+        $('#container_inner').append('<div class="character" id="char_' + this.UniqueName + '"><img alt=""></div>');
+        $('#char_' + this.UniqueName).css(this.Attributes);
+        $('#char_' + this.UniqueName + ' > img').hide().error(function() {
+            $('#container').removeClass("busy");
+            $('#' + $(this.parentNode)[0].id + '_old > img').fadeOut(duration,function() {initStep(); $(this.parentNode).remove();});
+        }).load(function() {
+            $('#container').removeClass("busy");
+            $(this).fadeIn(duration);
+            $('#' + $(this.parentNode)[0].id + '_old > img').delay(duration / 4).fadeOut(duration,function() {
+                initStep();
+                $(this.parentNode).remove();
+            });
+        }).attr('src','vn/' + NovelID + '/char/' + this.UniqueName + '/' + this.CurrentImage);
+    } else {
+        this.CurrentImage = typeof newImage !== 'undefined' ? newImage : this.CurrentImage;
+        initStep();
+    }
+}
+gameCharacter.prototype.move = function(features,duration) {
+    var updated = {};
+    features = features.split(';');
+    $.each(features,function(pos,str) {
+        if (str.indexOf('=') !== false) {
+            par = str.split('=');
+            switch(par[0]) {
+                case 'x':
+                case 'left':
+                    updated['left'] = parseInt(par[1]) + 'px';
+                    updated['right'] = 'auto';
+                    break;
+                case '-x':
+                case 'right':
+                    updated['right'] = parseInt(par[1]) + 'px';
+                    updated['left'] = 'auto';
+                    break;
+                case 'y':
+                case 'top':
+                    updated['top'] = parseInt(par[1]) + 'px';
+                    updated['bottom'] = 'auto';
+                    break;
+                case '-y':
+                case 'bottom':
+                    updated['bottom'] = parseInt(par[1]) + 'px';
+                    updated['top'] = 'auto';
+                    break;
+                case 'z':
+                    updated['z-index'] = parseInt(par[1]);
+                    break;
+            }
+        } else {
+            VNgineLog('Unknown chmove parameter ' + str);
+        }
+    });
+    $.extend(this.Attributes,updated);
+    if (this.Visible) {
+        duration = typeof duration !== 'undefined' ? parseInt(duration) : 1000;
+        VNgineLog('chmove: animating for character ' + this.UniqueName);
+        $('#char_' + this.UniqueName).animate(this.Attributes,duration,function() { initStep() });
+    } else {
+        initStep();
+    }
+}
 gameCharacter.prototype.remove = function(duration) {
     if (!this.Visible) {
         initStep();
@@ -701,6 +796,7 @@ gameCharacter.prototype.insert = function(duration) {
     duration = typeof duration !== 'undefined' ? parseInt(duration) : 1000;
     $('#container').addClass("busy");
     $('#container_inner').append('<div class="character" id="char_' + this.UniqueName + '"><img alt=""></div>');
+    $('#char_' + this.UniqueName).css(this.Attributes);
     $('#char_' + this.UniqueName + ' > img').hide().error(function() {
         $('#container').removeClass("busy");
         initStep();
@@ -768,14 +864,36 @@ characterTyper.prototype.typeCharacter = function() {
                             break;
                         case "shake":
                             VNgineLog("TextParser: executed a shaker");
-                            setTimeout( function(a) { return function() { shaker(10,0.5,function() { a.typeCharacter();});};}(self),0);
+                            var props = (typeof tag[2] === "undefined"
+                                ? [false, 10]
+                                : ((tag[2].lastIndexOf(" ") <= 0)
+                                    ? [tag[2] == "y", 10]
+                                    : [tag[2].split(" ")[1] == "y", parseInt(tag[2].split(" ")[2])]
+                                    ));
+                            console.log(props);
+                            if (TextSpeed > 0) {
+                                if (props[0]) {
+                                    setTimeout( function(a,b) { return function() { shaker(b,0.5,function() { a.typeCharacter();});};}(self,props[1]),0);
+                                } else {
+                                    setTimeout( function(a,b) { return function() { shaker(b,0.5,function() { return false; });};}(self,props[1]),0);
+                                    setTimeout(function(){self.typeCharacter();},TextSpeed);
+                                }
+                            } else {
+                                setTimeout(function() {self.typeCharacter(); },0);
+                            }
                             break;
                         case "speed":
-                            if (TextSpeed > 0) { TextSpeed = parseInt(tag[2]); }
-                            VNgineLog("TextParser: set text speed to " + parseInt(tag[2]));
+                            if (TextSpeed > 0) {
+                                TextSpeed = parseInt(tag[2]);
+                                VNgineLog("TextParser: set text speed to " + parseInt(tag[2]));
+                            }
                             setTimeout(function() {self.typeCharacter(); },TextSpeed);
                             break;
                         case "auto":
+                            this.destroy();
+                            break;
+                        case "leaveopen":
+                            LeftOpen = true;
                             this.destroy();
                             break;
                         default:
@@ -834,19 +952,18 @@ characterTyper.prototype.destroy = function() {
     if (this.Parent !== undefined) {
         this.Parent.destroy();
     } else {
-        addHistoryItem();
+        if (!LeftOpen) { addHistoryItem(); }
         initStep();
     }
 }
 
 function shaker(strength,speed,callback) {
+    if (TextSpeed == 0) { strength = 0; } // skip shaking if skipping via click or ctrl
     if (strength > 0) {
-        //var dir = Math.random()*2*Math.PI;
         var dir = (strength/speed)*1.25*Math.PI;
         var xd = strength * Math.cos(dir);
         var yd = strength * Math.sin(dir);
         strength -= speed;
-        //console.log("set coordinates for divs to " + xd + " hor " + yd + " ver, strength " + strength);
         $("#container_inner").css("left",xd + "px").css("top",yd + "px");
         setTimeout(function(s,p,c){ return function(){ shaker(s,p,c); }}(strength, speed, callback),50);
     } else {
@@ -873,32 +990,6 @@ function addOverlay(path,duration) {
     $('#container_inner').append('<div class="overlay" id="overlay_' + id + '"><img src="vn/' + NovelID +'/bg/' + path + '"></div>');
     $('#overlay_' + id + ' > img').hide().load(function() { $('#container').removeClass("busy"); $(this).fadeIn(duration,function(){ $('.overlay:not(#overlay_' + id + ')').remove(); initStep(); })});
 }
-/*function addCharacter(path,duration,clear_others) {
-    duration = typeof duration !== 'undefined' ? parseInt(duration) : 1000;
-    $('#container').addClass("busy");
-    var id = IDs.getCharID().toString();
-    $('#container_inner').append('<div class="character" id="char_' + id + '"><img src="vn/' + NovelID +'/char/' + path + '"></div>');
-    if (duration == 0) {
-        $('#char_' + id + ' > img').hide().load(function() {
-            $('#container').removeClass("busy");
-            if (clear_others) {
-                $('.character:not(#char_' + id + ')').remove();
-            }
-            $(this).show(); initStep();
-        });
-    } else {
-        $('#char_' + id + ' > img').hide().load(function() {
-            $('#container').removeClass("busy");
-            $(this).fadeIn(duration,function() { initStep(duration / 2); });
-            if (clear_others) {
-                $('.character:not(#char_' + id + ')').delay(duration / 2).fadeOut(duration,function() {
-                    $(this).remove();
-                })
-            };
-        });
-        
-    }
-}*/
 
 function userChoice(option) {
     var msgbox = document.getElementById('messagebox');
@@ -914,11 +1005,12 @@ function addColorLayer(color,duration,destroy) {
     destroy = typeof destroy !== 'undefined' ? destroy : false;
     var id = IDs.getOverlayID().toString();
     $('#container_inner').append('<div class="overlay color-overlay" id="overlay_' + id + '" style="background-color: ' + color + '"></div>');
-    $('#overlay_' + id).hide().fadeIn(duration,function() { if (destroy) { $('.character').remove(); $('.background').remove(); }});
+    $('#overlay_' + id).hide().fadeIn(duration,function() { if (destroy) { /*$('.character').remove(); $('.background').remove(); */ }});
     return $('#overlay_' + id);
 }
 
 function saveCurrentState(manual) {
+    if (manual) { alert('Not supported in this branch at the moment.'); } return false;
     manual = typeof manual !== 'undefined' ? manual : true;
     savegame = {};
     savegame.n = NovelID;
@@ -943,11 +1035,13 @@ function saveCurrentState(manual) {
 }
 
 function loadAutoSave() {
+    alert('Not supported in this branch at the moment.'); return false;
     if (($('#messagenext').length > 0) && ($('#container').hasClass("clickable"))) {
         if (NovelAutoSave != "") { loadSavedState(false,NovelAutoSave); }
     }
 }
 function loadSavedState(manual,savedata) {
+    alert('Not supported in this branch at the moment.'); return false;
     manual = typeof manual !== 'undefined' ? manual : true;
     if ((($('#messagenext').length > 0) && ($('#container').hasClass("clickable"))) || ($('.choice').length > 0)) {
         if (manual) { data = $("#loaddata")[0].value; }
