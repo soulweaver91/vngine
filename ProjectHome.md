@@ -1,0 +1,1 @@
+A visual novel engine written in HTML5 and JavaScript for modern browsers.
